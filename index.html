@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Player de Treinamento — Operadoras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       RESET & VARIÁVEIS
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #181818;
+      --surface2: #222;
+      --border: #2a2a2a;
+      --text: #f0ede8;
+      --text-muted: #666;
+      --accent: #e30613;
+      --accent-rgb: 227, 6, 19;
+      --player-h: 90px;
+      --sidebar-w: 230px;
+      --radius: 10px;
+    }
+
+    /* ---- Temas por operadora ---- */
+    [data-op="amil"]        { --accent: #E30613; --accent-rgb: 227,6,19; }
+    [data-op="bradesco"]    { --accent: #CC092F; --accent-rgb: 204,9,47; }
+    [data-op="notredame"]   { --accent: #0068B4; --accent-rgb: 0,104,180; }
+    [data-op="portoseguro"] { --accent: #0052A5; --accent-rgb: 0,82,165; }
+    [data-op="sulamerica"]  { --accent: #F47920; --accent-rgb: 244,121,32; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ============================================================
+       ESTRUTURA GERAL
+    ============================================================ */
+    .app-wrapper {
+      display: flex;
+      height: 100vh;
+      padding-bottom: var(--player-h);
+    }
+
+    /* ============================================================
+       SIDEBAR (desktop)
+    ============================================================ */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: calc(100vh - var(--player-h));
+    }
+
+    .sidebar-header {
+      padding: 28px 22px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 34px;
+      height: 34px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.4s;
+    }
+
+    .logo-icon svg { color: white; }
+
+    .sidebar-header h1 {
+      font-size: 0.9rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    .sidebar-header p {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .op-nav {
+      padding: 12px 0;
+    }
+
+    .op-nav-label {
+      padding: 10px 22px 6px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .op-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 12px 22px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-align: left;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      transition: color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .op-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+
+    .op-btn.active { color: var(--accent); }
+
+    .op-btn.active::after {
+      content: '';
+      position: absolute;
+      left: 0; top: 6px; bottom: 6px;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 0 3px 3px 0;
+      transition: background 0.4s;
+    }
+
+    .op-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .op-count {
+      margin-left: auto;
+      font-size: 0.62rem;
+      background: var(--border);
+      border-radius: 20px;
+      padding: 2px 7px;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
+       MOBILE TABS
+    ============================================================ */
+    .mobile-tabs {
+      display: none;
+      overflow-x: auto;
+      scrollbar-width: none;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+    }
+    .mobile-tabs::-webkit-scrollbar { display: none; }
+
+    .mobile-tab {
+      padding: 14px 14px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .mobile-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ============================================================
+       CONTEÚDO PRINCIPAL
+    ============================================================ */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .op-header {
+      padding: 44px 40px 28px;
+      background: linear-gradient(135deg, rgba(var(--accent-rgb),0.13) 0%, transparent 65%);
+      border-bottom: 1px solid rgba(var(--accent-rgb),0.18);
+      transition: background 0.5s, border-color 0.5s;
+    }
+
+    .op-header-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+      transition: color 0.4s;
+    }
+
+    .op-header h2 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .op-header-sub {
+      margin-top: 8px;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-family: 'Lora', serif;
+      font-style: italic;
+    }
+
+    /* ============================================================
+       LISTA DE EPISÓDIOS
+    ============================================================ */
+    .episode-list {
+      padding: 24px 40px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ep-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.25s, background 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ep-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(var(--accent-rgb), 0.07);
+      opacity: 0;
+      transition: opacity 0.25s;
+      pointer-events: none;
+    }
+
+    .ep-card:hover::after { opacity: 1; }
+
+    .ep-card.active {
+      border-color: rgba(var(--accent-rgb), 0.45);
+      background: rgba(var(--accent-rgb), 0.06);
+    }
+
+    .ep-card.active::after { opacity: 0; }
+
+    .ep-num {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0;
+      letter-spacing: 0.05em;
+    }
+
+    .ep-card.active .ep-num { color: var(--accent); }
+
+    .ep-icon {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.25s, border-color 0.25s;
+    }
+
+    .ep-card:hover .ep-icon,
+    .ep-card.active .ep-icon {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .ep-icon svg {
+      width: 14px; height: 14px;
+      color: var(--text-muted);
+      transition: color 0.25s;
+    }
+
+    .ep-card:hover .ep-icon svg,
+    .ep-card.active .ep-icon svg { color: white; }
+
+    .ep-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ep-title {
+      font-size: 0.88rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.02em;
+    }
+
+    .ep-card.active .ep-title { color: var(--accent); }
+
+    .ep-meta {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: 'Lora', serif;
+      font-style: italic;
+    }
+
+    .ep-bar-wrap {
+      width: 90px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .ep-bar-pct {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .ep-bar {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .ep-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.4s, background 0.4s;
+    }
+
+    /* ============================================================
+       PLAYER FIXO
+    ============================================================ */
+    .player {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--player-h);
+      background: rgba(14,14,14,0.97);
+      backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(var(--accent-rgb),0.22);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 18px;
+      z-index: 200;
+      transition: border-color 0.5s;
+    }
+
+    /* Linha de cor no topo do player */
+    .player::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      transition: background 0.5s;
+    }
+
+    .player-info {
+      min-width: 0;
+      width: 200px;
+      flex-shrink: 0;
+    }
+
+    .player-op-label {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      transition: color 0.4s;
+    }
+
+    .player-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.02em;
+      margin-top: 2px;
+    }
+
+    .player-idle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'Lora', serif;
+      font-style: italic;
+    }
+
+    /* Controles */
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .ctrl {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      border-radius: 50%;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .ctrl:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+
+    .ctrl svg { width: 18px; height: 18px; }
+
+    .ctrl-play {
+      width: 46px; height: 46px;
+      background: var(--accent);
+      color: white;
+      transition: background 0.4s, filter 0.2s;
+    }
+
+    .ctrl-play:hover {
+      filter: brightness(1.15);
+      background: var(--accent);
+      color: white;
+    }
+
+    .ctrl-play svg { width: 20px; height: 20px; }
+
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(var(--accent-rgb),0.45); }
+      70%  { box-shadow: 0 0 0 10px rgba(var(--accent-rgb),0);    }
+      100% { box-shadow: 0 0 0 0   rgba(var(--accent-rgb),0);    }
+    }
+
+    .ctrl-play.playing { animation: pulse 2.2s ease infinite; }
+
+    /* Barra de progresso */
+    .player-progress {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .time-txt {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .track {
+      flex: 1;
+      height: 4px;
+      background: #2e2e2e;
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .track-fill {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      pointer-events: none;
+      transition: background 0.4s;
+    }
+
+    .track-thumb {
+      position: absolute;
+      top: 50%;
+      width: 13px; height: 13px;
+      background: white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      left: 0%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    }
+
+    .track:hover .track-thumb { opacity: 1; }
+
+    /* Volume */
+    .vol-ctrl {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .vol-icon { color: var(--text-muted); }
+    .vol-icon svg { width: 16px; height: 16px; }
+
+    input[type="range"].vol-range {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 80px;
+      height: 4px;
+      background: #2e2e2e;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    input[type="range"].vol-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      cursor: pointer;
+    }
+
+    /* ============================================================
+       RESPONSIVIDADE
+    ============================================================ */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .mobile-tabs { display: flex; }
+
+      .app-wrapper {
+        flex-direction: column;
+        height: auto;
+        padding-bottom: 80px;
+      }
+
+      .main { overflow-y: unset; }
+
+      .op-header {
+        padding: 24px 18px 18px;
+      }
+
+      .op-header h2 { font-size: 1.7rem; }
+
+      .episode-list {
+        padding: 14px 14px 24px;
+      }
+
+      .ep-bar-wrap { display: none; }
+
+      .player {
+        padding: 0 14px;
+        gap: 10px;
+        height: 80px;
+        --player-h: 80px;
+      }
+
+      .player-info { width: 110px; }
+
+      .player-title { font-size: 0.78rem; }
+
+      .vol-ctrl { display: none; }
+
+      .ctrl svg { width: 16px; height: 16px; }
+      .ctrl-play { width: 40px; height: 40px; }
+      .ctrl-play svg { width: 18px; height: 18px; }
+
+      .time-txt { display: none; }
+    }
+
+    /* ============================================================
+       MISC
+    ============================================================ */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 2px; }
+
+    audio { display: none; }
+  </style>
+</head>
+<body data-op="amil">
+
+<!-- ============================================================
+     HTML
+============================================================ -->
+
+<!-- Tabs mobile -->
+<nav class="mobile-tabs" id="mobileTabs"></nav>
+
+<div class="app-wrapper">
+
+  <!-- Sidebar desktop -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">
+          <!-- Ícone headphone -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Treinamentos</h1>
+          <p>Operadoras de Saúde</p>
+        </div>
+      </div>
+    </div>
+    <nav class="op-nav">
+      <div class="op-nav-label">Operadoras</div>
+      <div id="opNav"></div>
+    </nav>
+  </aside>
+
+  <!-- Conteúdo principal -->
+  <main class="main" id="main">
+    <header class="op-header" id="opHeader">
+      <div class="op-header-tag" id="opTag">Operadora</div>
+      <h2 id="opTitle">Selecione uma operadora</h2>
+      <p class="op-header-sub" id="opSub">Escolha um episódio para iniciar o treinamento</p>
+    </header>
+    <div class="episode-list" id="episodeList"></div>
+  </main>
+</div>
+
+<!-- Player fixo -->
+<div class="player" id="player">
+  <div class="player-info">
+    <div class="player-op-label" id="playerOp">—</div>
+    <div class="player-title player-idle" id="playerTitle">Nenhum episódio selecionado</div>
+  </div>
+
+  <div class="player-controls">
+    <button class="ctrl" id="btnPrev" title="Anterior">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/>
+      </svg>
+    </button>
+
+    <button class="ctrl ctrl-play" id="btnPlay" title="Play/Pause">
+      <!-- Ícone play (padrão) -->
+      <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      <!-- Ícone pause (escondido) -->
+      <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+        <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+      </svg>
+    </button>
+
+    <button class="ctrl" id="btnNext" title="Próximo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="player-progress">
+    <span class="time-txt" id="timeCurrent">0:00</span>
+    <div class="track" id="track">
+      <div class="track-fill" id="trackFill"></div>
+      <div class="track-thumb" id="trackThumb"></div>
+    </div>
+    <span class="time-txt" id="timeDuration">0:00</span>
+  </div>
+
+  <div class="vol-ctrl">
+    <span class="vol-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </span>
+    <input type="range" class="vol-range" id="volRange" min="0" max="1" step="0.01" value="1" />
+  </div>
+</div>
+
+<!-- Elemento de áudio -->
+<audio id="audioEl"></audio>
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+<script>
+/* ================================================================
+   ██████╗  ██████╗ ██████╗  ██████╗ █████╗ ███████╗████████╗███████╗
+   ██╔══██╗██╔═══██╗██╔══██╗██╔════╝██╔══██╗██╔════╝╚══██╔══╝██╔════╝
+   ██████╔╝██║   ██║██║  ██║██║     ███████║███████╗   ██║   ███████╗
+   ██╔═══╝ ██║   ██║██║  ██║██║     ██╔══██║╚════██║   ██║   ╚════██║
+   ██║     ╚██████╔╝██████╔╝╚██████╗██║  ██║███████║   ██║   ███████║
+   ╚═╝      ╚═════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝   ╚═╝   ╚══════╝
+
+   ▸ COLOQUE OS CAMINHOS DOS SEUS ÁUDIOS ABAIXO
+   ▸ Substitua cada  "AUDIO_AQUI"  pelo caminho relativo do arquivo
+     Exemplo: "audio/amil/alteracao-cadastral.mp3"
+   ▸ Se ainda não tiver o áudio, deixe a string vazia: ""
+================================================================ */
+
+const PODCASTS = {
+
+  amil: {
+    name: "Amil",
+    subtitle: "Planos de saúde Amil",
+    episodes: [
+      { title: "Alteração Cadastral",  src: "AUDIO_AQUI" },
+      { title: "Alteração de Plano",   src: "AUDIO_AQUI" },
+      { title: "Exclusão — Demissão",  src: "AUDIO_AQUI" },
+      { title: "Exclusão — RN 561",    src: "AUDIO_AQUI" },
+      { title: "Fatura e Boleto",      src: "AUDIO_AQUI" },
+      { title: "Inclusão CLT",         src: "AUDIO_AQUI" },
+      { title: "Inclusão PJ",          src: "AUDIO_AQUI" },
+      { title: "Portabilidade",        src: "AUDIO_AQUI" },
+      { title: "Tabela de Valores",    src: "AUDIO_AQUI" },
+    ]
+  },
+
+  bradesco: {
+    name: "Bradesco",
+    subtitle: "Bradesco Saúde",
+    episodes: [
+      { title: "Alteração Cadastral",  src: "AUDIO_AQUI" },
+      { title: "Alteração de Plano",   src: "AUDIO_AQUI" },
+      { title: "Exclusão — Demissão",  src: "AUDIO_AQUI" },
+      { title: "Exclusão — RN 561",    src: "AUDIO_AQUI" },
+      { title: "Fatura e Boleto",      src: "AUDIO_AQUI" },
+      { title: "Inclusão CLT",         src: "AUDIO_AQUI" },
+      { title: "Inclusão PJ",          src: "AUDIO_AQUI" },
+      { title: "Portabilidade",        src: "AUDIO_AQUI" },
+      { title: "Tabela de Valores",    src: "AUDIO_AQUI" },
+    ]
+  },
+
+  notredame: {
+    name: "NotreDame",
+    subtitle: "NotreDame Intermédica",
+    episodes: [
+      { title: "Alteração Cadastral",  src: "AUDIO_AQUI" },
+      { title: "Alteração de Plano",   src: "AUDIO_AQUI" },
+      { title: "Exclusão — Demissão",  src: "AUDIO_AQUI" },
+      { title: "Exclusão — RN 561",    src: "AUDIO_AQUI" },
+      { title: "Fatura e Boleto",      src: "AUDIO_AQUI" },
+      { title: "Inclusão CLT",         src: "AUDIO_AQUI" },
+      { title: "Inclusão PJ",          src: "AUDIO_AQUI" },
+      { title: "Portabilidade",        src: "AUDIO_AQUI" },
+      { title: "Tabela de Valores",    src: "AUDIO_AQUI" },
+    ]
+  },
+
+  portoseguro: {
+    name: "Porto Seguro",
+    subtitle: "Porto Seguro Saúde",
+    episodes: [
+      { title: "Alteração Cadastral",  src: "AUDIO_AQUI" },
+      { title: "Alteração de Plano",   src: "AUDIO_AQUI" },
+      { title: "Exclusão — Demissão",  src: "AUDIO_AQUI" },
+      { title: "Exclusão — RN 561",    src: "AUDIO_AQUI" },
+      { title: "Fatura e Boleto",      src: "AUDIO_AQUI" },
+      { title: "Inclusão CLT",         src: "AUDIO_AQUI" },
+      { title: "Inclusão PJ",          src: "AUDIO_AQUI" },
+      { title: "Portabilidade",        src: "AUDIO_AQUI" },
+      { title: "Tabela de Valores",    src: "AUDIO_AQUI" },
+    ]
+  },
+
+  sulamerica: {
+    name: "Sulamérica",
+    subtitle: "Sulamérica Saúde",
+    episodes: [
+      { title: "Alteração Cadastral",  src: "AUDIO_AQUI" },
+      { title: "Alteração de Plano",   src: "AUDIO_AQUI" },
+      { title: "Exclusão — Demissão",  src: "AUDIO_AQUI" },
+      { title: "Exclusão — RN 561",    src: "AUDIO_AQUI" },
+      { title: "Fatura e Boleto",      src: "AUDIO_AQUI" },
+      { title: "Inclusão CLT",         src: "AUDIO_AQUI" },
+      { title: "Inclusão PJ",          src: "AUDIO_AQUI" },
+      { title: "Portabilidade",        src: "AUDIO_AQUI" },
+      { title: "Tabela de Valores",    src: "AUDIO_AQUI" },
+    ]
+  },
+
+};
+
+/* ================================================================
+   ESTADO DA SESSÃO (progresso salvo apenas enquanto a aba estiver aberta)
+================================================================ */
+const session = {
+  progress: {},          // { "amil-2": 45.3, ... }  →  tempo em segundos
+  currentOp: null,       // chave da operadora atual
+  currentEp: null,       // índice do episódio atual
+};
+
+/* ================================================================
+   REFERÊNCIAS DOM
+================================================================ */
+const audio      = document.getElementById('audioEl');
+const body       = document.body;
+const opNav      = document.getElementById('opNav');
+const mobileTabs = document.getElementById('mobileTabs');
+const opTag      = document.getElementById('opTag');
+const opTitle    = document.getElementById('opTitle');
+const opSub      = document.getElementById('opSub');
+const epList     = document.getElementById('episodeList');
+const playerOp   = document.getElementById('playerOp');
+const playerTitle= document.getElementById('playerTitle');
+const btnPlay    = document.getElementById('btnPlay');
+const btnPrev    = document.getElementById('btnPrev');
+const btnNext    = document.getElementById('btnNext');
+const iconPlay   = document.getElementById('iconPlay');
+const iconPause  = document.getElementById('iconPause');
+const track      = document.getElementById('track');
+const trackFill  = document.getElementById('trackFill');
+const trackThumb = document.getElementById('trackThumb');
+const timeCurrent= document.getElementById('timeCurrent');
+const timeDuration=document.getElementById('timeDuration');
+const volRange   = document.getElementById('volRange');
+const logoIcon   = document.querySelector('.logo-icon');
+
+/* ================================================================
+   UTILITÁRIOS
+================================================================ */
+function fmt(s) {
+  if (!isFinite(s) || s < 0) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2, '0');
+  return `${m}:${sec}`;
+}
+
+function sessionKey(op, idx) { return `${op}-${idx}`; }
+
+function saveProgress() {
+  if (session.currentOp === null || session.currentEp === null) return;
+  session.progress[sessionKey(session.currentOp, session.currentEp)] = audio.currentTime;
+}
+
+function getProgress(op, idx) {
+  return session.progress[sessionKey(op, idx)] || 0;
+}
+
+function getPercent(op, idx) {
+  const dur = PODCASTS[op].episodes[idx]._duration || 0;
+  if (!dur) return 0;
+  return Math.min(100, (getProgress(op, idx) / dur) * 100);
+}
+
+/* ================================================================
+   RENDERIZAR NAVEGAÇÃO
+================================================================ */
+function buildNav() {
+  Object.keys(PODCASTS).forEach(key => {
+    const op = PODCASTS[key];
+
+    // Sidebar
+    const btn = document.createElement('button');
+    btn.className = 'op-btn';
+    btn.dataset.key = key;
+    btn.innerHTML = `
+      <span class="op-dot"></span>
+      ${op.name}
+      <span class="op-count">${op.episodes.length}</span>
+    `;
+    btn.addEventListener('click', () => selectOp(key));
+    opNav.appendChild(btn);
+
+    // Mobile tab
+    const tab = document.createElement('button');
+    tab.className = 'mobile-tab';
+    tab.dataset.key = key;
+    tab.textContent = op.name;
+    tab.addEventListener('click', () => selectOp(key));
+    mobileTabs.appendChild(tab);
+  });
+}
+
+/* ================================================================
+   SELECIONAR OPERADORA
+================================================================ */
+function selectOp(key) {
+  session.currentOp = key;
+  const op = PODCASTS[key];
+
+  // Tema visual
+  body.dataset.op = key;
+  document.querySelectorAll('[data-key]').forEach(el => {
+    el.classList.toggle('active', el.dataset.key === key);
+  });
+
+  // Cabeçalho
+  opTag.textContent = 'Operadora';
+  opTitle.textContent = op.name;
+  opSub.textContent = op.subtitle;
+
+  // Lista de episódios
+  renderEpisodes(key);
+}
+
+/* ================================================================
+   RENDERIZAR EPISÓDIOS
+================================================================ */
+function renderEpisodes(opKey) {
+  epList.innerHTML = '';
+  const op = PODCASTS[opKey];
+
+  op.episodes.forEach((ep, idx) => {
+    const isActive = session.currentOp === opKey && session.currentEp === idx;
+    const pct = getPercent(opKey, idx);
+    const saved = getProgress(opKey, idx);
+
+    const card = document.createElement('div');
+    card.className = 'ep-card' + (isActive ? ' active' : '');
+    card.dataset.op = opKey;
+    card.dataset.idx = idx;
+
+    let metaText = 'Não iniciado';
+    if (saved > 0) metaText = `Retomar em ${fmt(saved)}`;
+
+    card.innerHTML = `
+      <span class="ep-num">${String(idx + 1).padStart(2,'0')}</span>
+      <div class="ep-icon">
+        ${isActive
+          ? `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
+          : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`
+        }
+      </div>
+      <div class="ep-info">
+        <div class="ep-title">${ep.title}</div>
+        <div class="ep-meta">${metaText}</div>
+      </div>
+      <div class="ep-bar-wrap">
+        <span class="ep-bar-pct">${Math.round(pct)}%</span>
+        <div class="ep-bar"><div class="ep-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+    `;
+
+    card.addEventListener('click', () => playEpisode(opKey, idx));
+    epList.appendChild(card);
+  });
+}
+
+/* ================================================================
+   TOCAR EPISÓDIO
+================================================================ */
+function playEpisode(opKey, idx) {
+  // Salvar progresso do episódio atual
+  saveProgress();
+
+  const ep = PODCASTS[opKey].episodes[idx];
+
+  if (!ep.src || ep.src === 'AUDIO_AQUI') {
+    alert(`⚠️ Áudio não configurado para:\n"${ep.title} — ${PODCASTS[opKey].name}"\n\nSubstitua "AUDIO_AQUI" no JavaScript pelo caminho do arquivo de áudio.`);
+    return;
+  }
+
+  session.currentOp = opKey;
+  session.currentEp = idx;
+
+  audio.src = ep.src;
+  audio.currentTime = getProgress(opKey, idx);
+
+  audio.play().catch(err => {
+    console.warn('Não foi possível iniciar o áudio:', err);
+  });
+
+  // Atualizar player info
+  playerOp.textContent = PODCASTS[opKey].name.toUpperCase();
+  playerTitle.classList.remove('player-idle');
+  playerTitle.textContent = ep.title;
+
+  // Atualizar tema
+  body.dataset.op = opKey;
+  selectOp(opKey); // rerender nav + lista
+
+  // Scroll para o card
+  setTimeout(() => {
+    const card = epList.querySelector('.ep-card.active');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 80);
+}
+
+/* ================================================================
+   EVENTOS DE ÁUDIO
+================================================================ */
+audio.addEventListener('timeupdate', () => {
+  if (!isFinite(audio.duration)) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+
+  trackFill.style.width = pct + '%';
+  trackThumb.style.left = pct + '%';
+  timeCurrent.textContent = fmt(audio.currentTime);
+
+  // Salvar progresso de tempos em tempos
+  session.progress[sessionKey(session.currentOp, session.currentEp)] = audio.currentTime;
+
+  // Barra do card atual
+  updateActiveCardBar(pct);
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  timeDuration.textContent = fmt(audio.duration);
+  if (session.currentOp !== null && session.currentEp !== null) {
+    PODCASTS[session.currentOp].episodes[session.currentEp]._duration = audio.duration;
+  }
+});
+
+audio.addEventListener('play', () => {
+  iconPlay.style.display  = 'none';
+  iconPause.style.display = 'block';
+  btnPlay.classList.add('playing');
+});
+
+audio.addEventListener('pause', () => {
+  iconPlay.style.display  = 'block';
+  iconPause.style.display = 'none';
+  btnPlay.classList.remove('playing');
+  saveProgress();
+  if (session.currentOp) renderEpisodes(session.currentOp);
+});
+
+audio.addEventListener('ended', () => {
+  // Marcar como 100%
+  if (session.currentOp !== null && session.currentEp !== null) {
+    const dur = PODCASTS[session.currentOp].episodes[session.currentEp]._duration || audio.duration || 0;
+    session.progress[sessionKey(session.currentOp, session.currentEp)] = dur;
+  }
+  // Auto-próximo
+  const nextIdx = session.currentEp + 1;
+  if (nextIdx < PODCASTS[session.currentOp].episodes.length) {
+    playEpisode(session.currentOp, nextIdx);
+  } else {
+    iconPlay.style.display  = 'block';
+    iconPause.style.display = 'none';
+    btnPlay.classList.remove('playing');
+    if (session.currentOp) renderEpisodes(session.currentOp);
+  }
+});
+
+function updateActiveCardBar(pct) {
+  const card = epList.querySelector('.ep-card.active');
+  if (!card) return;
+  const fill = card.querySelector('.ep-bar-fill');
+  const pctEl = card.querySelector('.ep-bar-pct');
+  if (fill) fill.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+  const meta = card.querySelector('.ep-meta');
+  if (meta && audio.currentTime > 0) {
+    meta.textContent = `Retomar em ${fmt(audio.currentTime)}`;
+  }
+}
+
+/* ================================================================
+   CONTROLES DO PLAYER
+================================================================ */
+btnPlay.addEventListener('click', () => {
+  if (session.currentEp === null) return;
+  audio.paused ? audio.play() : audio.pause();
+});
+
+btnPrev.addEventListener('click', () => {
+  if (session.currentEp === null) return;
+  if (audio.currentTime > 3) {
+    audio.currentTime = 0;
+    return;
+  }
+  const prevIdx = session.currentEp - 1;
+  if (prevIdx >= 0) playEpisode(session.currentOp, prevIdx);
+});
+
+btnNext.addEventListener('click', () => {
+  if (session.currentEp === null) return;
+  const nextIdx = session.currentEp + 1;
+  if (nextIdx < PODCASTS[session.currentOp].episodes.length) {
+    playEpisode(session.currentOp, nextIdx);
+  }
+});
+
+/* Barra de progresso — clique para pular */
+track.addEventListener('click', e => {
+  if (!isFinite(audio.duration) || session.currentEp === null) return;
+  const rect = track.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = ratio * audio.duration;
+});
+
+/* Arrastar a barra de progresso */
+let dragging = false;
+track.addEventListener('mousedown', e => {
+  if (session.currentEp === null) return;
+  dragging = true;
+  seekTo(e);
+});
+document.addEventListener('mousemove', e => { if (dragging) seekTo(e); });
+document.addEventListener('mouseup', () => { dragging = false; });
+
+track.addEventListener('touchstart', e => {
+  if (session.currentEp === null) return;
+  dragging = true;
+  seekTo(e.touches[0]);
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (dragging) seekTo(e.touches[0]);
+}, { passive: true });
+document.addEventListener('touchend', () => { dragging = false; });
+
+function seekTo(e) {
+  if (!isFinite(audio.duration)) return;
+  const rect = track.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  audio.currentTime = ratio * audio.duration;
+}
+
+/* Volume */
+volRange.addEventListener('input', () => {
+  audio.volume = volRange.value;
+});
+
+/* Teclas de atalho */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); btnPlay.click(); }
+  if (e.code === 'ArrowRight') { if (isFinite(audio.duration)) audio.currentTime = Math.min(audio.currentTime + 15, audio.duration); }
+  if (e.code === 'ArrowLeft')  { audio.currentTime = Math.max(audio.currentTime - 15, 0); }
+});
+
+/* ================================================================
+   INICIAR
+================================================================ */
+buildNav();
+selectOp(Object.keys(PODCASTS)[0]);
+</script>
+</body>
+</html>
